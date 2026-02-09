@@ -1,0 +1,4 @@
+rootProject.name = "usdrub-rpc"
+
+include("api", "currency-rate-provider", "rate-printer")
+
