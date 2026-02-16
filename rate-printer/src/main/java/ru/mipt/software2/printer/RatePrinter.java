@@ -13,16 +13,28 @@ public class RatePrinter {
 
     private static final Logger log = LoggerFactory.getLogger(RatePrinter.class);
 
-    private final CurrencyServiceGrpc.CurrencyServiceBlockingStub blockingStub;
+    private final ServiceDiscoveryClient discoveryClient;
 
-    public RatePrinter(ManagedChannel channel) {
-        this.blockingStub = CurrencyServiceGrpc.newBlockingStub(channel);
+    public RatePrinter(ServiceDiscoveryClient discoveryClient) {
+        this.discoveryClient = discoveryClient;
     }
 
     @Scheduled(fixedRate = 5000)
     public void printRate() {
-        var response = blockingStub.getRate(GetRateRequest.getDefaultInstance());
-        log.info("Current USDRUB rate: {}", response.getUsdrub());
+        ServiceDiscoveryClient.InstanceInfo instance = discoveryClient.getNextInstance();
+        if (instance == null) {
+            log.warn("No currency-service instances available, skipping...");
+            return;
+        }
+
+        try {
+            ManagedChannel channel = discoveryClient.getChannel(instance);
+            var stub = CurrencyServiceGrpc.newBlockingStub(channel);
+            var response = stub.getRate(GetRateRequest.getDefaultInstance());
+            log.info("[Instance {}] USDRUB rate: {} (total instances: {})",
+                    instance, response.getUsdrub(), discoveryClient.getInstanceCount());
+        } catch (Exception e) {
+            log.error("Failed to get rate from {}: {}", instance, e.getMessage());
+        }
     }
 }
-
