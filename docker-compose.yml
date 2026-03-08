@@ -49,3 +49,27 @@ services:
       - provider-1
       - provider-2
       - provider-3
+
+  pact-postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: pact_broker
+      POSTGRES_USER: pact_broker
+      POSTGRES_PASSWORD: pact_broker
+    ports:
+      - "5432:5432"
+
+  pact-broker:
+    image: pactfoundation/pact-broker:latest
+    depends_on:
+      - pact-postgres
+    environment:
+      PACT_BROKER_DATABASE_ADAPTER: postgres
+      PACT_BROKER_DATABASE_HOST: pact-postgres
+      PACT_BROKER_DATABASE_NAME: pact_broker
+      PACT_BROKER_DATABASE_USERNAME: pact_broker
+      PACT_BROKER_DATABASE_PASSWORD: pact_broker
+      PACT_BROKER_DATABASE_PORT: 5432
+      PACT_BROKER_LOG_LEVEL: INFO
+    ports:
+      - "9292:9292"

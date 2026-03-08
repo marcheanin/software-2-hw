@@ -9,6 +9,8 @@ ext {
     protobufVersion = '3.25.1'
     grpcVersion = '1.61.0'
     curatorVersion = '5.6.0'
+    pactVersion = '4.6.17'
+    pactPluginDriverVersion = '0.5.1'
 }
 
 subprojects {
