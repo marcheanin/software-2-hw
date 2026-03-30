@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import io.grpc.Server;
+import io.grpc.ServerInterceptors;
 import io.grpc.netty.NettyServerBuilder;
+import ru.mipt.software2.provider.grpc.GrpcServerMonitoringInterceptor;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -31,12 +33,16 @@ public class GrpcServerRunner implements CommandLineRunner {
 
     private final CurrencyServiceImpl currencyService;
     private final CuratorFramework curatorFramework;
+    private final GrpcServerMonitoringInterceptor grpcServerMonitoringInterceptor;
     private Server server;
     private String registeredPath;
 
-    public GrpcServerRunner(CurrencyServiceImpl currencyService, CuratorFramework curatorFramework) {
+    public GrpcServerRunner(CurrencyServiceImpl currencyService,
+                            CuratorFramework curatorFramework,
+                            GrpcServerMonitoringInterceptor grpcServerMonitoringInterceptor) {
         this.currencyService = currencyService;
         this.curatorFramework = curatorFramework;
+        this.grpcServerMonitoringInterceptor = grpcServerMonitoringInterceptor;
     }
 
     @Override
@@ -48,7 +54,7 @@ public class GrpcServerRunner implements CommandLineRunner {
 
     private void startGrpcServer() throws IOException {
         server = NettyServerBuilder.forPort(grpcPort)
-                .addService(currencyService)
+                .addService(ServerInterceptors.intercept(currencyService, grpcServerMonitoringInterceptor))
                 .build()
                 .start();
         log.info("gRPC server started on port {}", grpcPort);
