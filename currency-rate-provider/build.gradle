@@ -16,6 +16,9 @@ dependencies {
     implementation "org.apache.curator:curator-framework:${curatorVersion}"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation "au.com.dius.pact.provider:junit5:${pactVersion}"
+    testImplementation "io.pact.plugin.driver:core:${pactPluginDriverVersion}"
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
