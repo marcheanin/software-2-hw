@@ -13,11 +13,16 @@ ext {
     pactPluginDriverVersion = '0.5.1'
 }
 
+def resolvedVersion = System.getenv('CI_VERSION')
+        ?: System.getenv('PROJECT_VERSION')
+        ?: findProperty('projectVersion')
+        ?: '1.0-SNAPSHOT'
+
 subprojects {
     apply plugin: 'java'
 
     group = 'ru.mipt.software2'
-    version = '1.0-SNAPSHOT'
+    version = resolvedVersion
 
     repositories {
         mavenCentral()

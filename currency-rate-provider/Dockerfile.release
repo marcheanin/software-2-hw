@@ -1,0 +1,10 @@
+# Runtime-only image: build JAR first, then:
+#   ./gradlew :currency-rate-provider:bootJar -x test
+#   docker build -f currency-rate-provider/Dockerfile.release -t usdrub-rpc/currency-rate-provider:${IMAGE_TAG:-latest} .
+#
+# This separates "release" (immutable image from a known JAR) from "run" (docker compose up --no-build).
+
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY currency-rate-provider/build/libs/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]
