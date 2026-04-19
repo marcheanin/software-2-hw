@@ -14,10 +14,13 @@ services:
       JMXDISABLE: "false"
 
   provider-1:
+    image: usdrub-rpc/currency-rate-provider:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: currency-rate-provider/Dockerfile
+    stop_grace_period: 45s
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       GRPC_SERVER_PORT: 9090
       ZOOKEEPER_ADDRESS: zookeeper:2181
       SPRING_APPLICATION_NAME: provider-1
@@ -27,10 +30,13 @@ services:
       - zookeeper
 
   provider-2:
+    image: usdrub-rpc/currency-rate-provider:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: currency-rate-provider/Dockerfile
+    stop_grace_period: 45s
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       GRPC_SERVER_PORT: 9090
       ZOOKEEPER_ADDRESS: zookeeper:2181
       SPRING_APPLICATION_NAME: provider-2
@@ -40,10 +46,13 @@ services:
       - zookeeper
 
   provider-3:
+    image: usdrub-rpc/currency-rate-provider:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: currency-rate-provider/Dockerfile
+    stop_grace_period: 45s
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       GRPC_SERVER_PORT: 9090
       ZOOKEEPER_ADDRESS: zookeeper:2181
       SPRING_APPLICATION_NAME: provider-3
@@ -53,10 +62,13 @@ services:
       - zookeeper
 
   consumer:
+    image: usdrub-rpc/rate-printer:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: rate-printer/Dockerfile
+    stop_grace_period: 45s
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       ZOOKEEPER_ADDRESS: zookeeper:2181
       SPRING_APPLICATION_NAME: consumer
     ports:

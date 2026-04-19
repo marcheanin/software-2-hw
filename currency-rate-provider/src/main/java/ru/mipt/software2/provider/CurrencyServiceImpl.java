@@ -21,7 +21,9 @@ public class CurrencyServiceImpl extends CurrencyServiceGrpc.CurrencyServiceImpl
 
     @Override
     public void getRate(GetRateRequest request, StreamObserver<GetRateResponse> responseObserver) {
-        log.info("gRPC server request payload: {}", request);
+        if (log.isDebugEnabled()) {
+            log.debug("gRPC server request payload: {}", request);
+        }
 
         double rate = rateService.getCurrentRate();
 
@@ -29,7 +31,10 @@ public class CurrencyServiceImpl extends CurrencyServiceGrpc.CurrencyServiceImpl
                 .setUsdrub(rate)
                 .build();
 
-        log.info("gRPC server response payload: {}", response);
+        if (log.isDebugEnabled()) {
+            log.debug("gRPC server response payload: {}", response);
+        }
+        log.info("GetRate usdrub={}", rate);
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();

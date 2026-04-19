@@ -1,6 +1,5 @@
 package ru.mipt.software2.printer;
 
-import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.annotation.PreDestroy;
@@ -16,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -27,7 +27,13 @@ public class ServiceDiscoveryClient {
     private final String basePath;
     private final AtomicInteger counter = new AtomicInteger(0);
     private final ConcurrentMap<String, ManagedChannel> channelCache = new ConcurrentHashMap<>();
-    private final ClientInterceptor grpcClientMonitoringInterceptor;
+    private final GrpcClientMonitoringInterceptor grpcClientMonitoringInterceptor;
+
+    @Value("${app.grpc.client.channel-shutdown-grace-seconds:10}")
+    private int channelShutdownGraceSeconds;
+
+    @Value("${app.grpc.client.channel-shutdown-force-seconds:5}")
+    private int channelShutdownForceSeconds;
 
     public ServiceDiscoveryClient(CuratorFramework curator,
                                    @Value("${service.name:currency-service}") String serviceName,
@@ -93,7 +99,29 @@ public class ServiceDiscoveryClient {
 
     @PreDestroy
     public void close() {
-        channelCache.values().forEach(ManagedChannel::shutdown);
+        List<ManagedChannel> channels = new ArrayList<>(channelCache.values());
+        channelCache.clear();
+        for (ManagedChannel channel : channels) {
+            if (!channel.isShutdown()) {
+                channel.shutdown();
+            }
+        }
+        for (ManagedChannel channel : channels) {
+            try {
+                if (!channel.awaitTermination(channelShutdownGraceSeconds, TimeUnit.SECONDS)) {
+                    log.warn("Channel {} did not terminate in {}s; shutdownNow()",
+                            channel.authority(), channelShutdownGraceSeconds);
+                    channel.shutdownNow();
+                    if (!channel.awaitTermination(channelShutdownForceSeconds, TimeUnit.SECONDS)) {
+                        log.error("Channel {} still not terminated after shutdownNow()", channel.authority());
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                channel.shutdownNow();
+            }
+        }
+        log.info("All gRPC client channels shut down");
     }
 
     public record InstanceInfo(String host, int port) {

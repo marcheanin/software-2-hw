@@ -16,6 +16,8 @@ import ru.mipt.software2.provider.grpc.GrpcServerMonitoringInterceptor;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
 public class GrpcServerRunner implements CommandLineRunner {
@@ -31,11 +33,18 @@ public class GrpcServerRunner implements CommandLineRunner {
     @Value("${service.name:currency-service}")
     private String serviceName;
 
+    @Value("${app.grpc.server.shutdown-grace-seconds:20}")
+    private int shutdownGraceSeconds;
+
+    @Value("${app.grpc.server.shutdown-force-seconds:5}")
+    private int shutdownForceSeconds;
+
     private final CurrencyServiceImpl currencyService;
     private final CuratorFramework curatorFramework;
     private final GrpcServerMonitoringInterceptor grpcServerMonitoringInterceptor;
     private Server server;
     private String registeredPath;
+    private final AtomicBoolean stopped = new AtomicBoolean(false);
 
     public GrpcServerRunner(CurrencyServiceImpl currencyService,
                             CuratorFramework curatorFramework,
@@ -87,9 +96,45 @@ public class GrpcServerRunner implements CommandLineRunner {
 
     @PreDestroy
     public void stop() {
-        if (server != null) {
-            server.shutdown();
+        if (!stopped.compareAndSet(false, true)) {
+            return;
+        }
+        if (server == null) {
+            return;
+        }
+        if (server.isShutdown()) {
+            return;
+        }
+        log.info("Stopping gRPC server (grace {}s, force {}s)", shutdownGraceSeconds, shutdownForceSeconds);
+        server.shutdown();
+        try {
+            if (!server.awaitTermination(shutdownGraceSeconds, TimeUnit.SECONDS)) {
+                log.warn("gRPC server did not finish within {}s; forcing shutdownNow()", shutdownGraceSeconds);
+                server.shutdownNow();
+                if (!server.awaitTermination(shutdownForceSeconds, TimeUnit.SECONDS)) {
+                    log.error("gRPC server still not terminated after shutdownNow()");
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            server.shutdownNow();
+        } finally {
+            removeZookeeperRegistration();
             log.info("gRPC server stopped");
+        }
+    }
+
+    private void removeZookeeperRegistration() {
+        if (registeredPath == null) {
+            return;
+        }
+        try {
+            curatorFramework.delete().deletingChildrenIfNeeded().forPath(registeredPath);
+            log.info("Removed ZooKeeper registration {}", registeredPath);
+        } catch (Exception e) {
+            log.warn("Could not delete ZooKeeper path {}: {}", registeredPath, e.getMessage());
+        } finally {
+            registeredPath = null;
         }
     }
 }

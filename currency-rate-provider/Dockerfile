@@ -1,9 +1,11 @@
 FROM gradle:8.5-jdk17 AS build
 WORKDIR /app
+COPY gradlew gradlew.bat gradle/ ./
 COPY build.gradle settings.gradle ./
 COPY api/ api/
 COPY currency-rate-provider/ currency-rate-provider/
-RUN gradle :currency-rate-provider:bootJar --no-daemon -x test
+RUN chmod +x gradlew \
+    && ./gradlew :currency-rate-provider:bootJar --no-daemon -x test
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
