@@ -108,3 +108,7 @@ docker compose down
 │       └── ZookeeperConfig.java        — бин CuratorFramework
 └── docker-compose.yml            — ZK + 3 провайдера + 1 потребитель
 ```
+
+
+### Метрики
+

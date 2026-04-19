@@ -23,6 +23,7 @@ import java.util.Map;
 @PactBroker(
         url = "${PACT_BROKER_URL:http://localhost:9292}"
 )
+/** Broker verification is optional; set {@code PACT_BROKER_ENABLED=true} when Pact Broker is reachable. */
 @EnabledIfEnvironmentVariable(named = "PACT_BROKER_ENABLED", matches = "true")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 public class CurrencyServiceProviderPactTest {
