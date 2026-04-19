@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: usdrub-rpc
+    orgId: 1
+    folder: usdrub-rpc
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

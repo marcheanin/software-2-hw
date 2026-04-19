@@ -30,7 +30,10 @@ public class RatePrinter {
         try {
             ManagedChannel channel = discoveryClient.getChannel(instance);
             var stub = CurrencyServiceGrpc.newBlockingStub(channel);
-            var response = stub.getRate(GetRateRequest.getDefaultInstance());
+            var request = GetRateRequest.getDefaultInstance();
+            log.info("gRPC client request payload: {}", request);
+            var response = stub.getRate(request);
+            log.info("gRPC client response payload: {}", response);
             log.info("[Instance {}] USDRUB rate: {} (total instances: {})",
                     instance, response.getUsdrub(), discoveryClient.getInstanceCount());
         } catch (Exception e) {

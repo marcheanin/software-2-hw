@@ -1,5 +1,6 @@
 package ru.mipt.software2.printer;
 
+import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.annotation.PreDestroy;
@@ -8,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import ru.mipt.software2.printer.grpc.GrpcClientMonitoringInterceptor;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -25,11 +27,14 @@ public class ServiceDiscoveryClient {
     private final String basePath;
     private final AtomicInteger counter = new AtomicInteger(0);
     private final ConcurrentMap<String, ManagedChannel> channelCache = new ConcurrentHashMap<>();
+    private final ClientInterceptor grpcClientMonitoringInterceptor;
 
     public ServiceDiscoveryClient(CuratorFramework curator,
-                                   @Value("${service.name:currency-service}") String serviceName) {
+                                   @Value("${service.name:currency-service}") String serviceName,
+                                   GrpcClientMonitoringInterceptor grpcClientMonitoringInterceptor) {
         this.curator = curator;
         this.basePath = "/services/" + serviceName;
+        this.grpcClientMonitoringInterceptor = grpcClientMonitoringInterceptor;
     }
 
     public InstanceInfo getNextInstance() {
@@ -69,6 +74,7 @@ public class ServiceDiscoveryClient {
         String key = instance.host() + ":" + instance.port();
         return channelCache.computeIfAbsent(key, k ->
                 ManagedChannelBuilder.forAddress(instance.host(), instance.port())
+                        .intercept(grpcClientMonitoringInterceptor)
                         .usePlaintext()
                         .build()
         );

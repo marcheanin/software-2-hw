@@ -1,12 +1,17 @@
-version: '3.8'
-
 services:
   zookeeper:
-    image: zookeeper:3.9
+    build:
+      context: .
+      dockerfile: monitoring/zookeeper/Dockerfile
     ports:
       - "2181:2181"
+      - "9404:9404"
     environment:
       ZOO_MY_ID: 1
+      JMXPORT: 9999
+      JMXAUTH: "false"
+      JMXSSL: "false"
+      JMXDISABLE: "false"
 
   provider-1:
     build:
@@ -15,6 +20,9 @@ services:
     environment:
       GRPC_SERVER_PORT: 9090
       ZOOKEEPER_ADDRESS: zookeeper:2181
+      SPRING_APPLICATION_NAME: provider-1
+    ports:
+      - "18081:8080"
     depends_on:
       - zookeeper
 
@@ -25,6 +33,9 @@ services:
     environment:
       GRPC_SERVER_PORT: 9090
       ZOOKEEPER_ADDRESS: zookeeper:2181
+      SPRING_APPLICATION_NAME: provider-2
+    ports:
+      - "18082:8080"
     depends_on:
       - zookeeper
 
@@ -35,6 +46,9 @@ services:
     environment:
       GRPC_SERVER_PORT: 9090
       ZOOKEEPER_ADDRESS: zookeeper:2181
+      SPRING_APPLICATION_NAME: provider-3
+    ports:
+      - "18083:8080"
     depends_on:
       - zookeeper
 
@@ -44,11 +58,41 @@ services:
       dockerfile: rate-printer/Dockerfile
     environment:
       ZOOKEEPER_ADDRESS: zookeeper:2181
+      SPRING_APPLICATION_NAME: consumer
+    ports:
+      - "18084:8080"
     depends_on:
       - zookeeper
       - provider-1
       - provider-2
       - provider-3
+
+  prometheus:
+    image: prom/prometheus:v2.53.2
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - provider-1
+      - provider-2
+      - provider-3
+      - consumer
+      - zookeeper
+
+  grafana:
+    image: grafana/grafana:11.1.5
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
 
   pact-postgres:
     image: postgres:15

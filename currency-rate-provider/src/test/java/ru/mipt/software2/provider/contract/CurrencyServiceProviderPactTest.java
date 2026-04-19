@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.mipt.software2.provider.CurrencyServiceImpl;
 import ru.mipt.software2.provider.RateService;
@@ -22,18 +23,21 @@ import java.util.Map;
 @PactBroker(
         url = "${PACT_BROKER_URL:http://localhost:9292}"
 )
+/** Broker verification is optional; set {@code PACT_BROKER_ENABLED=true} when Pact Broker is reachable. */
+@EnabledIfEnvironmentVariable(named = "PACT_BROKER_ENABLED", matches = "true")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 public class CurrencyServiceProviderPactTest {
 
-    private static final int GRPC_PORT = 9091;
+    private static int grpcPort;
     private static Server server;
 
     @BeforeAll
     static void startServer() throws IOException {
-        server = NettyServerBuilder.forPort(GRPC_PORT)
+        server = NettyServerBuilder.forPort(0)
                 .addService(new CurrencyServiceImpl(new RateService()))
                 .build()
                 .start();
+        grpcPort = server.getPort();
     }
 
     @AfterAll
@@ -48,7 +52,7 @@ public class CurrencyServiceProviderPactTest {
         context.setTarget(new PluginTestTarget(
                 Map.of(
                         "host", "127.0.0.1",
-                        "port", GRPC_PORT,
+                        "port", grpcPort,
                         "transport", "grpc"
                 )
         ));
